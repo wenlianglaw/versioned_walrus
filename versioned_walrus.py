@@ -158,7 +158,7 @@ def QueryVersions(version: model.Version,
     else:
         versions_by_version = versions_by_time
 
-    # (Optional) You can add logic for `query_description` using AI-based filtering or keyword matching
+    # TODO: Add AI-based filtering or keyword matching
 
     # Return the filtered versions
     return versions_by_version
