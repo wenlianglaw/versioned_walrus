@@ -38,7 +38,7 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/sign_contract':
             self.sign_contract()
-        if self.path == '/upload_contract':
+        elif self.path == '/upload_contract':
             self.upload_contract()
         else:
             self.send_error(404, 'Method not supported.')
