@@ -1,0 +1,48 @@
+{
+    "clients": [
+        {
+            "client_id": "client1",
+            "name": "Wenliang Liu",
+            "contracts": [
+                {
+                    "contract_id": "contract1",
+                    "name": "Some names",
+                    "versions": [
+                        {
+                            "blob_id": "sRseDjpd4j8ryuByLboaXZSkT3BAbtDVw8W32cGjWMA",
+                            "initial_blob_data": "sRseDjpd4j8ryuByLboaXZSkT3BAbtDVw8W32cGjWMA",
+                            "previous_versions": [],
+                            "alias": "doc1"
+                        },
+                        {
+                            "blob_id": "B2o4LDSEYYbJO6uPw-tOgU3j_qH9FJHmP13GuQRC_vk",
+                            "initial_blob_data": "sRseDjpd4j8ryuByLboaXZSkT3BAbtDVw8W32cGjWMA",
+                            "previous_versions": [
+                                "sRseDjpd4j8ryuByLboaXZSkT3BAbtDVw8W32cGjWMA"
+                            ],
+                            "alias": "doc1"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "client_id": "client2",
+            "name": "Client name2",
+            "contracts": [
+                {
+                    "contract_id": "contract2_1",
+                    "name": "Some names",
+                    "versions": [
+                        {
+                            "blob_id": "B2o4LDSEYYbJO6uPw-tOgU3j_qH9FJHmP13GuQRC_vk",
+                            "initial_blob_data": "sRseDjpd4j8ryuByLboaXZSkT3BAbtDVw8W32cGjWMA",
+                            "previous_versions": [],
+                            "alias": "doc1"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

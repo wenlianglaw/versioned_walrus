@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Contracts</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .contract { margin-bottom: 20px; }
+        .signed { color: green; }
+        .unsigned { color: red; }
+        .version { margin-left: 20px; }
+        .child-version { margin-left: 40px; }
+        .version-selected { background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Agent Contract Management</h1>
+
+    <!-- Dropdown to select a client -->
+    <label for="clientSelect">Select a client:</label>
+    <select id="clientSelect" onchange="loadContracts()">
+        <option value="">Loading clients...</option>
+    </select>
+
+    <!-- Area to display contracts -->
+    <div id="contracts" style="margin-top: 20px;">
+        <!-- Contract data will be populated here -->
+    </div>
+
+    <!-- File select and upload section -->
+    <h2>Upload New Contract</h2>
+    <input type="file" id="fileInput">
+    <button onclick="uploadContract()">Upload Contract</button>
+
+    <!-- Button to sign a contract -->
+    <h2>Sign Contract</h2>
+    <button id="signButton" style="display: none;" onclick="signContract()">Sign Contract</button>
+
+    <script>
+        const serverUrl = 'http://localhost:8887';
+        let selectedClient = null;
+        let selectedContract = null;
+        let selectedVersion = null;
+        let clientsData = [];
+
+        // Function to load the clients and populate the dropdown
+        function loadClients() {
+            fetch(serverUrl + '/get_clients')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error fetching clients');
+                    }
+                    return response.json();
+                })
+                .then(clients => {
+                    clientsData = clients; // Cache the client data
+                    const clientSelect = document.getElementById('clientSelect');
+                    clientSelect.innerHTML = ''; // Clear previous options
+
+                    // Add a default "Select client" option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = 'Select a client';
+                    clientSelect.appendChild(defaultOption);
+
+                    // Populate the dropdown with clients
+                    clients.forEach(client => {
+                        const option = document.createElement('option');
+                        option.value = client.client_id;
+                        option.textContent = client.name;
+                        if (client.client_id === selectedClient?.client_id) {
+                            option.selected = true; // Keep the same client selected
+                        }
+                        clientSelect.appendChild(option);
+                    });
+
+                    // Load contracts for the previously selected client, if any
+                    if (selectedClient) {
+                        loadContracts();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading clients:', error);
+                    alert('Failed to load clients.');
+                });
+        }
+
+        // Function to load contracts for the selected client
+        function loadContracts() {
+            const clientId = document.getElementById('clientSelect').value;
+            if (!clientId) {
+                document.getElementById('contracts').innerHTML = ''; // Clear contracts section
+                document.getElementById('signButton').style.display = 'none'; // Hide sign button
+                return;
+            }
+
+            // Find the selected client from the cached client data
+            selectedClient = clientsData.find(client => client.client_id === clientId);
+
+            const contractsDiv = document.getElementById('contracts');
+            contractsDiv.innerHTML = ''; // Clear previous contracts
+            document.getElementById('signButton').style.display = 'none'; // Hide sign button
+
+            if (!selectedClient || selectedClient.contracts.length === 0) {
+                contractsDiv.textContent = 'No contracts found for this client.';
+                return;
+            }
+
+            // Display each contract and its versions (formerly snapshots)
+            selectedClient.contracts.forEach(contract => {
+                const contractDiv = document.createElement('div');
+                contractDiv.className = 'contract';
+
+                const title = document.createElement('h3');
+                title.textContent = `Contract ID: ${contract.contract_id}`;
+                contractDiv.appendChild(title);
+
+                contract.versions.forEach(version => {
+                    displayVersion(contractDiv, version, 0); // Display versions with depth 0
+                });
+
+                contractsDiv.appendChild(contractDiv);
+            });
+        }
+
+        // Recursively display versions and indent child versions
+        function displayVersion(container, version, depth) {
+            const versionDiv = document.createElement('div');
+            versionDiv.classList.add('version');
+            versionDiv.style.marginLeft = `${depth * 20}px`; // Indent based on depth
+
+            versionDiv.textContent = `Document: ${version.alias} (Blob ID: ${version.blob_id})`;
+
+            if (version.blob_id === selectedVersion?.blob_id) {
+                versionDiv.classList.add('version-selected'); // Highlight selected version
+            }
+
+            versionDiv.onclick = () => {
+                selectedContract = container;
+                selectedVersion = version;
+
+                // Show the sign button
+                document.getElementById('signButton').style.display = 'inline-block';
+
+                // Highlight the selected version
+                document.querySelectorAll('.version').forEach(v => v.style.backgroundColor = '');
+                versionDiv.style.backgroundColor = '#f0f0f0';
+            };
+
+            container.appendChild(versionDiv);
+
+            // Display child versions (if they exist)
+            version.previous_versions?.forEach(childVersion => {
+                const childVersionData = selectedClient.contracts.flatMap(contract => contract.versions).find(v => v.blob_id === childVersion);
+                if (childVersionData) {
+                    displayVersion(container, childVersionData, depth + 1); // Recursively display child versions
+                }
+            });
+        }
+
+        // Function to upload a contract
+        function uploadContract() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const clientId = document.getElementById('clientSelect').value;
+
+            if (!file || !clientId || !selectedVersion) {
+                alert('Please select a file, client, and version to upload.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('client_id', clientId);
+            formData.append('contract_id', selectedContract.contract_id);
+            formData.append('version_alias', selectedVersion.alias);
+            formData.append('blob_id', selectedVersion.blob_id);
+
+            fetch(serverUrl + '/upload_contract', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('File uploaded successfully: ' + data.message);
+                reloadDatabase(); // Reload the database after upload
+            })
+            .catch(error => {
+                console.error('Error uploading file:', error);
+                alert('Failed to upload file.');
+            });
+        }
+
+        // Function to sign a contract
+        function signContract() {
+            const clientId = document.getElementById('clientSelect').value;
+            if (!selectedContract || !selectedVersion) {
+                alert('Please select a contract and version to sign.');
+                return;
+            }
+
+            const signData = {
+                method: 'sign_contract',
+                client_id: clientId,
+                // TODO: For now hard-code the contract id
+                contract_id: 'contract1',
+                version_blob_id: selectedVersion.blob_id
+            };
+
+            fetch(serverUrl + '/sign_contract', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(signData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Contract signed successfully: ' + data.message);
+                loadContracts(); // Reload contracts to reflect signed status
+            })
+            .catch(error => {
+                console.error('Error signing contract:', error);
+                alert('Failed to sign contract.');
+            });
+        }
+
+        // Function to reload the database after successful file upload
+        function reloadDatabase() {
+            loadClients(); // Reload the clients and contracts while preserving selection
+        }
+
+        // Initialize the page by loading clients when the document is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            loadClients();
+        });
+    </script>
+</body>
+</html>
